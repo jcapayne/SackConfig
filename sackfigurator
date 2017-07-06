@@ -1,0 +1,97 @@
+#!/usr/bin/perl
+
+use SackUtils;
+use SackConfig;
+
+$global_config='sack.conf';
+
+%global=SackConfig::readConf($global_config);
+
+for $module (keys %{$global{defaultmodules}})
+{
+  $mod=$global{module}{$module};
+  do $mod
+      or SackUtils::die("Can't use $mod");
+  $mod =~ s/.pm$//;
+  $global{module}{$module}=$mod;
+  for $a (keys %{$global{local}{$module}})
+  {
+    $var = '$'.$mod.'::'.$a;
+    eval "$var = '$global{local}{$module}{$a}'";
+  }
+}
+
+($myconfig) = ($global{localname} =~ /^(\w+)\./);
+$myconfig.=".conf";
+
+readconfig($myconfig,'localhost');
+
+$pullfunction=$global{module}{'host'}.'::pullConfig';
+while ($#remotehosts >= 0)
+{
+   $remote = pop @remotehosts;
+   $remote_conf = &{$pullfunction}($remote);
+   readconfig($remote_conf, $remote);
+}
+
+# here we need to get the configs of the remote hosts, and for the trusted
+# hosts, get the configs of the remote machines they've listed... and then
+# do the whole config loop above.
+
+# dump out the configs
+for $module (keys %{$global{defaultmodules}})
+{
+  my $mod=$global{module}{$module};
+
+  $function=$mod.'::dumpConfig';
+   
+  if (defined (&{$function}))
+  {
+    &{$function}();
+  }
+  else
+  {
+    SackUtils::warn("config dump function $function not defined");
+  }
+}
+
+1;
+
+sub readconfig
+{
+  ($configfile)=shift;
+  ($server)=shift;
+
+  # the host module needs to know what server we're looking at
+  $function=$global{module}{'host'}.'::setCurrentHost';
+  &{$function}($server);
+
+  open (config, $configfile) or SackUtils::die("Can't open $configfile: $!");
+  while (<config>)
+  {
+    chomp;
+    $_ =~ s/#.*//;  # ditch comments
+    next if /^\s*$/; # skip blank lines
+  
+    ($cmd, $arg) = (/^(\S+)\s+(\S+)\s*\{\s*$/);
+    if ($cmd)
+    {
+      $function=$global{module}{$cmd}.'::readConfig';
+      if (defined (&{$function}))
+      {
+        &{$function}($cmd, $arg);
+      }
+      else
+      {
+        SackUtils::warn("parsing function $function not defined");
+        while(<config>) { last if /\}/ };
+      }
+    }
+    else
+    {
+      SackUtils::warn("Can't parse: $_");
+    }
+  }
+  close (config);
+}
+

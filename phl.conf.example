@@ -1,0 +1,42 @@
+# this is the local config to be shared with other hosts
+
+# hosts we pull configs from
+host sjc.nameserver.net {  
+   cfg    http://haybaler.sackheads.org/~jpayne/sjc.conf
+   trust  
+}
+
+host sou.nameserver.net {
+   trust 
+   cfg    http://joshua.sackheads.org/~jpayne/sou.conf
+}
+
+host phl.nameserver.net {
+   trust 
+   cfg    http://baconhouse.sackheads.org/~jpayne/phl.conf
+}
+
+host iad.nameserver.net {
+   trust
+   cfg    http://iad.nameserver.net/iad.conf
+}
+
+host rdu.nameserver.net {
+   cfg    http://pound.ifndef.com/~jpayne/rdu.conf
+   trust
+}
+
+host bos.nameserver.net {
+   cfg    http://bos.nameserver.net/~jpayne/bos.conf
+   trust
+}
+
+dns sackheads.com {
+  master phl.nameserver.net
+  slave  sou.nameserver.net
+  slave  sjc.nameserver.net
+  slave  rdu.nameserver.net
+  slave  bos.nameserver.net
+  slave  iad.nameserver.net
+  file   sackheads.com
+}

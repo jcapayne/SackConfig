@@ -1,0 +1,25 @@
+# this file has the local "global" config
+# 
+ 
+# associate top-level keywords with syntax modules
+module dns  BindConfig.pm
+#module zone BindZone.pm
+module host SackHost.pm
+module zone SackNull.pm
+
+# run these by default, other configs require explicit args
+defaultmodules dns
+defaultmodules zone
+defaultmodules host
+
+# where the remote configs are stored
+remotedir /tmp/sackfigurator/
+
+# this machine
+localname phl.nameserver.net
+
+# local config details, these options are passed to the associated modules
+local dns rootdir /tmp/
+local dns configfile sackdns.conf
+local dns primarydir primary/
+local dns secondarydir secondary/

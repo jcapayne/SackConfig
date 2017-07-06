@@ -1,0 +1,5 @@
+*  try <config> times to get remote configs before giving up
+*  if remote config unreachable, use old config until <config>
+*  if can't resolve IP address of one of the nameservers for gods sake
+   don't put 0 into the config
+*  auto-check CVS for new version once per day and warn if new version
