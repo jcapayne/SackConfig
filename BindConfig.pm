@@ -95,6 +95,7 @@ sub readConfig_dns
 sub dumpConfig
 { 
   $namedconf=$BindConfig::rootdir.$BindConfig::configfile;
+print STDERR "opening $namedconf\n";
   open (bindconf, ">$namedconf") or
        SackUtils::die("Can't open $namedconf: $!");
 
@@ -138,7 +139,8 @@ sub dumpConfig
   for $zone (keys %BindConfig::config)
   {
     $zonetype='unknown';
-    if ($BindConfig::config{$zone}{master} eq $main::global{localname})
+    if (($BindConfig::config{$zone}{master} eq $main::global{localname}) or
+        ($main::global{localalias}{$BindConfig::config{$zone}{master}}==1))
     {
       $zonetype='master';
     }
@@ -146,7 +148,8 @@ sub dumpConfig
     {
       for $ns (keys %{$BindConfig::config{$zone}{slave}})
       {
-        if ($ns eq $main::global{localname})
+        if (($ns eq $main::global{localname}) or
+            ($main::global{localalias}{$ns}==1))
         {
           $zonetype='slave';
           last;
@@ -160,6 +163,7 @@ sub dumpConfig
     }
 
     $BindConfig::config{$zone}{file} = $zone unless ($BindConfig::config{$zone}{file});
+print STDERR "adding $zone\n";
     print bindconf 'zone "'.$zone.'" {'."\n";
     print bindconf '  type '.$zonetype.";\n";
     if ($zonetype eq 'slave')
@@ -170,7 +174,7 @@ sub dumpConfig
       print bindconf '    '.
             $BindConfig::nameservers{$BindConfig::config{$zone}{'axfr-from'}}.
             '; /* axfr-from - '.$BindConfig::config{$zone}{'axfr-from'}.' */'.
-            "\n" if ($BindConfig::config{$zone}{'axfr-from'} and not $BindConfig::config{$zone}{'axfr-from'} eq $main::global{localname});
+            "\n" if ($BindConfig::config{$zone}{'axfr-from'} and not (($BindConfig::config{$zone}{'axfr-from'} eq $main::global{localname}) or ($main::global{localalias}{$BindConfig::config{$zone}{'axfr-from'}}==1)));
       print bindconf '    '.
             $BindConfig::nameservers{$BindConfig::config{$zone}{master}}.'; '.
             '/* MASTER - '.$BindConfig::config{$zone}{master}.' */'."\n"
@@ -178,6 +182,7 @@ sub dumpConfig
       for $ns (keys %{$BindConfig::config{$zone}{slave}})
       {
         next if ($ns eq $main::global{localname});
+        next if ($main::global{localalias}{$ns}==1);
         next if ($ns eq $BindConfig::config{$zone}{'axfr-from'});
         print bindconf '    '.$BindConfig::nameservers{$ns}.'; /* '.$ns.' */'."\n";
       }
@@ -196,11 +201,13 @@ sub dumpConfig
     for $ns (keys %{$BindConfig::config{$zone}{slave}})
     {
       next if ($ns eq $main::global{localname});
+      next if ($main::global{localalias}{$ns}==1);
       print bindconf '    '.$BindConfig::nameservers{$ns}.'; /* '.$ns.' */'."\n";
     }
     for $ns (keys %{$BindConfig::config{$zone}{'allow-axfr'}})
     {
       next if ($ns eq $main::global{localname});
+      next if ($main::global{localalias}{$ns}==1);
       print bindconf '    '.$BindConfig::nameservers{$ns}.'; /* '.$ns.' */'."\n";
     }
     print bindconf "  };\n";
@@ -210,6 +217,7 @@ sub dumpConfig
       for $ns (keys %{$BindConfig::config{$zone}{'notify'}})
       {
         next if ($ns eq $main::global{localname});
+        next if ($main::global{localalias}{$ns}==1);
         print bindconf '    '.$BindConfig::nameservers{$ns}.'; /* '.$ns.' */'."\n";
       }
       print bindconf "  };\n";

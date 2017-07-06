@@ -22,10 +22,15 @@ sub readConf
     elsif (/^remotedir\s+(\S+)\s*$/)
     {
       $config{remotedir}=$1;
+      mkdir($config{remotedir}) unless (-d $config{remotedir});
     }
     elsif (/^localname\s+(\S+)\s*$/)
     {
       $config{localname}=$1;
+    }
+    elsif (/^localalias\s+(\S+)\s*$/)
+    {
+      $config{localalias}{$1}=1;
     }
     elsif (/^defaultmodules\s+(\S+)\s*$/)
     {
