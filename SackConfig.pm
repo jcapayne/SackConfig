@@ -9,43 +9,47 @@ sub readConf
   my $conf=shift;
   my %config;
 
-  open(C, $conf) or SackUtils::die("Can't open $conf: $!");
-  while (<C>)
+  if(-e $conf && open(C, $conf))
   {
-    chomp;
-    next if /^\s*$/;  # skip blank lines
-    next if /^#/;  # skip comment only lines
-    if (/^module\s+(\S+)\s+(\S+)\s*$/)
+    while (<C>)
     {
-      $config{module}{$1}=$2;
+      chomp;
+      next if /^\s*$/;  # skip blank lines
+      next if /^#/;  # skip comment only lines
+      if (/^module\s+(\S+)\s+(\S+)\s*$/)
+      {
+        $config{module}{$1}=$2;
+      }
+      elsif (/^remotedir\s+(\S+)\s*$/)
+      {
+        $config{remotedir}=$1;
+        mkdir($config{remotedir}) unless (-d $config{remotedir});
+      }
+      elsif (/^localname\s+(\S+)\s*$/)
+      {
+        $config{localname}=$1;
+      }
+      elsif (/^localalias\s+(\S+)\s*$/)
+      {
+        $config{localalias}{$1}=1;
+      }
+      elsif (/^defaultmodules\s+(\S+)\s*$/)
+      {
+        $config{defaultmodules}{$1}=1;
+      }
+      elsif (/^local\s+(\S+)\s+(\S+)\s+(.+)\s*$/)
+      {
+        $config{local}{$1}{$2}=$3;
+      }
+      else
+      {
+        SackUtils::warn("unknown stanza $_ - ignoring");
+      }
     }
-    elsif (/^remotedir\s+(\S+)\s*$/)
-    {
-      $config{remotedir}=$1;
-      mkdir($config{remotedir}) unless (-d $config{remotedir});
-    }
-    elsif (/^localname\s+(\S+)\s*$/)
-    {
-      $config{localname}=$1;
-    }
-    elsif (/^localalias\s+(\S+)\s*$/)
-    {
-      $config{localalias}{$1}=1;
-    }
-    elsif (/^defaultmodules\s+(\S+)\s*$/)
-    {
-      $config{defaultmodules}{$1}=1;
-    }
-    elsif (/^local\s+(\S+)\s+(\S+)\s+(.+)\s*$/)
-    {
-      $config{local}{$1}{$2}=$3;
-    }
-    else
-    {
-      SackUtils::warn("unknown stanza $_ - ignoring");
-    }
+    close C;
+  } else {
+    SackUtils::warn("Can't open $conf: $!");
   }
-  close C;
   return %config;
 }
 

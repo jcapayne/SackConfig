@@ -66,31 +66,37 @@ sub readconfig
   $function=$global{module}{'host'}.'::setCurrentHost';
   &{$function}($server);
 
-  open (config, $configfile) or SackUtils::die("Can't open $configfile: $!");
-  while (<config>)
+  if (open (config, $configfile)) 
   {
-    chomp;
-    $_ =~ s/#.*//;  # ditch comments
-    next if /^\s*$/; # skip blank lines
-  
-    ($cmd, $arg) = (/^(\S+)\s+(\S+)\s*\{\s*$/);
-    if ($cmd)
+    while (<config>)
     {
-      $function=$global{module}{$cmd}.'::readConfig';
-      if (defined (&{$function}))
+      chomp;
+      $_ =~ s/#.*//;  # ditch comments
+      next if /^\s*$/; # skip blank lines
+    
+      ($cmd, $arg) = (/^(\S+)\s+(\S+)\s*\{\s*$/);
+      if ($cmd)
       {
-        &{$function}($cmd, $arg);
+        $function=$global{module}{$cmd}.'::readConfig';
+        if (defined (&{$function}))
+        {
+          &{$function}($cmd, $arg);
+        }
+        else
+        {
+          SackUtils::warn("parsing function $function not defined");
+          while(<config>) { last if /\}/ };
+        }
       }
       else
       {
-        SackUtils::warn("parsing function $function not defined");
-        while(<config>) { last if /\}/ };
+        SackUtils::warn("Can't parse: $_");
       }
     }
-    else
-    {
-      SackUtils::warn("Can't parse: $_");
-    }
+  } 
+  else
+  {
+    SackUtils::warn("Can't open $configfile: $!");
   }
   close (config);
 }
