@@ -2,13 +2,13 @@
 
 cd /tmp/sackfigurator
 echo "<html><head><title>Undelegated Domains</title></head><body><h1>Undelegated Domains</h1>"
-for r in $(grep ^dns * | awk '{ print $2 }' | sort | uniq) 
-do NSNET=$(dig +short ns @8.8.8.8 ${r} | grep -i nameserver.net |  wc -l) 
-  if [ ${NSNET} -eq 0 ]
-    then echo "<h2>${r}</h2><pre>"
-    dig +short ns @8.8.8.8 ${r}
-    echo "</pre>"  
-  fi
+for f in * 
+do echo "<h2>${f}</h2>"
+  for r in $(grep ^dns ${f} | awk '{ print $2 }' | sort | uniq) 
+  do NSNET=$(dig +short ns @8.8.8.8 ${r}) 
+    if [ $(echo ${NSNET} | grep -ci nameserver.net) -eq 0 ]
+      then echo "<h3>${r}</h3><pre>${NSNET}</pre>"  
+    fi
+  done
 done
-
 echo "</body></html>"
