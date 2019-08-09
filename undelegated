@@ -1,5 +1,6 @@
 #!/bin/bash
 
+cd /tmp/sackfigurator
 echo "<html><head><title>Undelegated Domains</title></head><body><h1>Undelegated Domains</h1>"
 for r in $(grep ^dns * | awk '{ print $2 }' | sort | uniq) 
 do NSNET=$(dig +short ns @8.8.8.8 ${r} | grep -i nameserver.net |  wc -l) 
