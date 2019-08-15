@@ -4,6 +4,8 @@ use SackUtils;
 use SackConfig;
 
 $global_config='sack.conf';
+# lets make it possible to use an alternative config file
+$global_config=$ARGV[0] if defined $ARGV[0];
 
 %global=SackConfig::readConf($global_config);
 
