@@ -1,14 +1,40 @@
 #!/bin/bash
 
 cd /tmp/sackfigurator
-echo "<html><head><title>Undelegated Domains</title></head><body><h1>Undelegated Domains</h1>"
+HTML="<html><head><title>Undelegated Domains</title></head><body><h1>Undelegated Domains</h1>"
 for f in * 
-do echo "<h2>${f}</h2>"
+do 
+  FILEHTML="<h2>${f}</h2>"
+  LINE="<table><thead><th>zone</th><th>GoogleDNS</th><th>Zone NS</th></thead><tbody>"
+  COUNT=0
   for r in $(grep ^dns ${f} | awk '{ print $2 }' | sort | uniq) 
-  do NSNET=$(dig +short ns @8.8.8.8 ${r}) 
+  do  
+    NSNET=$(dig +short ns @8.8.8.8 ${r}) 
     if [ $(echo ${NSNET} | grep -ci nameserver.net) -eq 0 ]
-      then echo "<h3>${r}</h3><pre>${NSNET}</pre>"  
+    then 
+      COUNT=1
+      LINE=${LINE}+"<tr><td>${r}</td><td>"
+      for z in ${NSNET}
+      do
+        LINE=${LINE}+"${z}<br>"
+      done
+      LINE=${LINE}+"</td><td>"
+      LINE=${LINE}+"$(for z in ${NSNET}
+        do
+          ZDNS=$(dig +short ns @${z} ${r})
+          for n in ${ZDNS}
+          do
+            echo ${n}
+          done
+        done | sort | uniq | tr ' ' '<br>')"
+      LINE=${LINE}+'</td></tr>'  
     fi
   done
+  LINE=${LINE}+'</tbody></table>'
+  if [ ${COUNT} -gt 0 ]
+  then
+    FILEHTML=${FILEHTML}+${LINE}
+  fi
+  HTML=${HTML}+${FILEHTML}
 done
-echo "</body></html>"
+echo ${HTML}
