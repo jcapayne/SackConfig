@@ -13,13 +13,13 @@ do
     if [ $(echo ${NSNET} | grep -ci nameserver.net) -eq 0 ]
     then 
       COUNT=1
-      LINE=${LINE}+"<tr><td>${r}</td><td>"
+      LINE="${LINE}<tr><td>${r}</td><td>"
       for z in ${NSNET}
       do
-        LINE=${LINE}+"${z}<br>"
+        LINE="${LINE}${z}<br>"
       done
-      LINE=${LINE}+"</td><td>"
-      LINE=${LINE}+"$(for z in ${NSNET}
+      LINE="${LINE}</td><td>"
+      LINE="${LINE}$(for z in ${NSNET}
         do
           ZDNS=$(dig +short ns @${z} ${r})
           for n in ${ZDNS}
@@ -27,14 +27,14 @@ do
             echo ${n}
           done
         done | sort | uniq | tr ' ' '<br>')"
-      LINE=${LINE}+'</td></tr>'  
+      LINE="${LINE}</td></tr>\n"  
     fi
   done
-  LINE=${LINE}+'</tbody></table>'
+  LINE="${LINE}</tbody></table>\n"
   if [ ${COUNT} -gt 0 ]
   then
-    FILEHTML=${FILEHTML}+${LINE}
+    FILEHTML="${FILEHTML}${LINE}"
   fi
-  HTML=${HTML}+${FILEHTML}
+  HTML="${HTML}${FILEHTML}"
 done
-echo ${HTML}
+echo -e "${HTML}</body></html>" 
