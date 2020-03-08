@@ -5,7 +5,7 @@ HTML="<html><head><title>Undelegated Domains</title></head><body><h1>Undelegated
 for f in * 
 do 
   FILEHTML="<h2>${f}</h2>"
-  LINE="<table><thead><th>zone</th><th>GoogleDNS</th><th>Zone NS</th></thead><tbody>"
+  LINE="<table border=1><thead><th>zone</th><th>GoogleDNS</th><th>Zone NS</th></thead><tbody>"
   COUNT=0
   for r in $(grep ^dns ${f} | awk '{ print $2 }' | sort | uniq) 
   do  
@@ -14,20 +14,25 @@ do
     then 
       COUNT=1
       LINE="${LINE}<tr><td>${r}</td><td>"
-      for z in ${NSNET}
-      do
-        LINE="${LINE}${z}<br>"
-      done
-      LINE="${LINE}</td><td>"
-      LINE="${LINE}$(for z in ${NSNET}
+      if [ $(echo ${NSNET} | grep -v ^$ | wc -l) -eq 0 ]
+      then
+        LINE="${LINE}NO NS RECORDS</td><td>NO NS RECORDS</td></tr>"
+      else
+        for z in ${NSNET}
         do
-          ZDNS=$(dig +short ns @${z} ${r})
-          for n in ${ZDNS}
+          LINE="${LINE}${z}<br>"
+        done
+        LINE="${LINE}</td><td>"
+        LINE="${LINE}$(for z in ${NSNET}
           do
-            echo ${n}
-          done
-        done | sort | uniq | tr ' ' '<br>')"
-      LINE="${LINE}</td></tr>\n"  
+            ZDNS=$(dig +short ns @${z} ${r})
+            for n in ${ZDNS}
+            do
+              echo ${n}
+            done
+          done | sort | uniq | tr ' ' '<br>')"
+        LINE="${LINE}</td></tr>\n"
+      fi  
     fi
   done
   LINE="${LINE}</tbody></table>\n"
