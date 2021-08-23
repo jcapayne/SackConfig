@@ -62,7 +62,7 @@ sub pullConfig
 #SackUtils::warn("loading config from $server");
 
   $file="$main::global{remotedir}$server\n";
-  if ($SackHost::config{$server}{cfg} =~ q!^http://!)
+  if ($SackHost::config{$server}{cfg} =~ q!^https?://!)
   {
     $content=LWP::Simple::get($SackHost::config{$server}{cfg});
     if (defined $content)
