@@ -7,8 +7,12 @@ use SackConfig;
 
 $global_config='sack.conf';
 
-# --reload: after regenerating configs, reload BIND (taking dynamic-zone precautions)
+# --reload: after regenerating configs, reload BIND (taking dynamic-zone precautions).
+# An alternative config file may be passed as the first non-flag argument
+# (retained from upstream — see commit beb857c).
 my $do_reload = grep { $_ eq '--reload' } @ARGV;
+my @args = grep { $_ ne '--reload' } @ARGV;
+$global_config = $args[0] if defined $args[0];
 
 %global=SackConfig::readConf($global_config);
 
