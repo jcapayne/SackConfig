@@ -1,11 +1,11 @@
 #!/usr/bin/perl
 
+use lib '.';
+
 use SackUtils;
 use SackConfig;
 
 $global_config='sack.conf';
-# lets make it possible to use an alternative config file
-$global_config=$ARGV[0] if defined $ARGV[0];
 
 %global=SackConfig::readConf($global_config);
 
@@ -68,8 +68,9 @@ sub readconfig
   $function=$global{module}{'host'}.'::setCurrentHost';
   &{$function}($server);
 
-  if (open (config, $configfile)) 
-  {
+  chomp($configfile);
+
+  if (-e $configfile && open (config, $configfile)) { 
     while (<config>)
     {
       chomp;
@@ -95,11 +96,9 @@ sub readconfig
         SackUtils::warn("Can't parse: $_");
       }
     }
-  } 
-  else
-  {
+    close (config);
+  } else {
     SackUtils::warn("Can't open $configfile: $!");
   }
-  close (config);
 }
 

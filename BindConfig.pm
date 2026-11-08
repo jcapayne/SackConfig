@@ -61,7 +61,7 @@ sub readConfig_dns
 
     if (/^\s*(master|slave|file|allow-axfr|axfr-from|notify)\s+(\S+)\s*\}?\s*$/)
     {
-      if ($1 eq 'file') 
+      if ($1 eq 'file')
       {
         $BindConfig::config{$domain}{$1}=$2;
       }
@@ -84,6 +84,13 @@ sub readConfig_dns
         $BindConfig::nameservers{$2}=0;
       }
     }
+    elsif (/^\s*update-policy\s+(.+)$/)
+    {
+      my $rule = $1;
+      $rule =~ s/\s*\}\s*$//;  # strip trailing } if closing brace shares line
+      $rule =~ s/\s+$//;
+      push @{$BindConfig::config{$domain}{'update-policy'}}, $rule;
+    }
     else
     {
        SackUtils::warn("Can't parse $_") unless /^\s*\}\s*$/;
@@ -103,6 +110,7 @@ print STDERR "opening $namedconf\n";
   {
     if ($BindConfig::nameservers{$ns} == 0)
     {
+      $BindConfig::nameservers6{$ns} = undef;
       $res=new Net::DNS::Resolver;
       $query = $res->query($ns, 'A');
       if ($query)
@@ -111,6 +119,16 @@ print STDERR "opening $namedconf\n";
         {
           next unless $rr->type eq 'A';
           $BindConfig::nameservers{$ns}=$rr->address;
+          last;
+        }
+      }
+      $query = $res->query($ns, 'AAAA');
+      if ($query)
+      {
+        for $rr ($query->answer)
+        {
+          next unless $rr->type eq 'AAAA';
+          $BindConfig::nameservers6{$ns}=$rr->address;
           last;
         }
       }
@@ -132,6 +150,25 @@ print STDERR "opening $namedconf\n";
      {
        SackUtils::warn("Can't resolve nameserver $ns");
        $BindConfig::nameservers{$ns}="127.0.0.2"; # put something other than 0
+     }
+    }
+    if (not defined $BindConfig::nameservers6{$ns})
+    {  # try again
+      $res=new Net::DNS::Resolver;
+      $query = $res->query($ns, 'AAAA');
+      if ($query)
+      {
+        for $rr ($query->answer)
+        {
+          next unless $rr->type eq 'AAAA';
+          $BindConfig::nameservers6{$ns}=$rr->address;
+          last;
+        }
+      }
+     if (not defined $BindConfig::nameservers6{$ns})
+     {
+       # too noisy
+       #  SackUtils::warn("Can't resolve IPv6 for nameserver $ns");
      }
     }
   }
@@ -176,15 +213,27 @@ print STDERR "adding $zone\n";
             '; /* axfr-from - '.$BindConfig::config{$zone}{'axfr-from'}.' */'.
             "\n" if ($BindConfig::config{$zone}{'axfr-from'} and not (($BindConfig::config{$zone}{'axfr-from'} eq $main::global{localname}) or ($main::global{localalias}{$BindConfig::config{$zone}{'axfr-from'}}==1)));
       print bindconf '    '.
+            $BindConfig::nameservers6{$BindConfig::config{$zone}{'axfr-from'}}.
+            '; /* IPv6 - axfr-from - '.$BindConfig::config{$zone}{'axfr-from'}.' */'.
+            "\n" if (defined $BindConfig::nameservers6{$BindConfig::config{$zone}{'axfr-from'}}  and $BindConfig::config{$zone}{'axfr-from'} and not (($BindConfig::config{$zone}{'axfr-from'} eq $main::global{localname}) or ($main::global{localalias}{$BindConfig::config{$zone}{'axfr-from'}}==1)));
+      print bindconf '    '.
             $BindConfig::nameservers{$BindConfig::config{$zone}{master}}.'; '.
             '/* MASTER - '.$BindConfig::config{$zone}{master}.' */'."\n"
             unless ($BindConfig::config{$zone}{master} eq $BindConfig::config{$zone}{'axfr-from'});
+      if (defined $BindConfig::nameservers6{$BindConfig::config{$zone}{master}})
+      {
+          print bindconf '    '.
+            $BindConfig::nameservers6{$BindConfig::config{$zone}{master}}.'; '.
+            '/* IPv6 - MASTER - '.$BindConfig::config{$zone}{master}.' */'."\n"
+            unless ($BindConfig::config{$zone}{master} eq $BindConfig::config{$zone}{'axfr-from'});
+      }
       for $ns (keys %{$BindConfig::config{$zone}{slave}})
       {
         next if ($ns eq $main::global{localname});
         next if ($main::global{localalias}{$ns}==1);
         next if ($ns eq $BindConfig::config{$zone}{'axfr-from'});
         print bindconf '    '.$BindConfig::nameservers{$ns}.'; /* '.$ns.' */'."\n";
+        print bindconf '    '.$BindConfig::nameservers6{$ns}.'; /* IPv6 - '.$ns.' */'."\n" if (defined $BindConfig::nameservers6{$ns});
       }
       print bindconf "  };\n";
     }
@@ -198,19 +247,44 @@ print STDERR "adding $zone\n";
     print bindconf '    '.
        $BindConfig::nameservers{$BindConfig::config{$zone}{master}}.'; '.
        '/* '.$BindConfig::config{$zone}{master}.' */'."\n";
+    print bindconf '    '.
+       $BindConfig::nameservers6{$BindConfig::config{$zone}{master}}.'; '.
+       '/* IPv6 - '.$BindConfig::config{$zone}{master}.' */'."\n" if (defined $BindConfig::nameservers6{$BindConfig::config{$zone}{master}});       
     for $ns (keys %{$BindConfig::config{$zone}{slave}})
     {
       next if ($ns eq $main::global{localname});
       next if ($main::global{localalias}{$ns}==1);
       print bindconf '    '.$BindConfig::nameservers{$ns}.'; /* '.$ns.' */'."\n";
+      print bindconf '    '.$BindConfig::nameservers6{$ns}.'; /* IPv6 - '.$ns.' */'."\n" if (defined $BindConfig::nameservers6{$ns});
     }
     for $ns (keys %{$BindConfig::config{$zone}{'allow-axfr'}})
     {
       next if ($ns eq $main::global{localname});
       next if ($main::global{localalias}{$ns}==1);
       print bindconf '    '.$BindConfig::nameservers{$ns}.'; /* '.$ns.' */'."\n";
+      print bindconf '    '.$BindConfig::nameservers6{$ns}.'; /* IPv6 - '.$ns.' */'."\n" if (defined $BindConfig::nameservers6{$ns});
     }
     print bindconf "  };\n";
+    
+    if ($zonetype eq 'master' &&
+        defined $BindConfig::config{$zone}{'update-policy'} &&
+        scalar @{$BindConfig::config{$zone}{'update-policy'}})
+    {
+      my @rules = @{$BindConfig::config{$zone}{'update-policy'}};
+      if ($#rules == 0 && $rules[0] eq 'local')
+      {
+        print bindconf "  update-policy local;\n";
+      }
+      else
+      {
+        print bindconf '  update-policy {'."\n";
+        for my $rule (@rules)
+        {
+          print bindconf '    '.$rule.";\n";
+        }
+        print bindconf "  };\n";
+      }
+    }
     if (scalar keys(%{$BindConfig::config{$zone}{'notify'}}))
     {
       print bindconf '  also-notify {'."\n";
@@ -219,6 +293,7 @@ print STDERR "adding $zone\n";
         next if ($ns eq $main::global{localname});
         next if ($main::global{localalias}{$ns}==1);
         print bindconf '    '.$BindConfig::nameservers{$ns}.'; /* '.$ns.' */'."\n";
+        print bindconf '    '.$BindConfig::nameservers6{$ns}.'; /* IPv6 - '.$ns.' */'."\n" if (defined $BindConfig::nameservers6{$ns});
       }
       print bindconf "  };\n";
     }
