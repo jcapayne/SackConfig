@@ -304,5 +304,41 @@ print STDERR "adding $zone\n";
 
 }
 
+sub reloadZones
+{
+  my @dynamic;
+  for my $zone (keys %BindConfig::config)
+  {
+    push @dynamic, $zone
+      if (defined $BindConfig::config{$zone}{'update-policy'} &&
+          scalar @{$BindConfig::config{$zone}{'update-policy'}});
+  }
+
+  if (@dynamic)
+  {
+    for my $z (@dynamic)
+    {
+      print STDERR "rndc freeze $z\n";
+      system('/usr/sbin/rndc', 'freeze', $z) == 0
+        or SackUtils::warn("rndc freeze $z failed");
+    }
+    print STDERR "rndc reload\n";
+    system('/usr/sbin/rndc', 'reload') == 0
+      or SackUtils::warn("rndc reload failed");
+    for my $z (@dynamic)
+    {
+      print STDERR "rndc thaw $z\n";
+      system('/usr/sbin/rndc', 'thaw', $z) == 0
+        or SackUtils::warn("rndc thaw $z failed");
+    }
+  }
+  else
+  {
+    print STDERR "rndc reload\n";
+    system('/usr/sbin/rndc', 'reload') == 0
+      or SackUtils::warn("rndc reload failed");
+  }
+}
+
 # SackUtils::warn("Loading BindConfig.pm");
 1;

@@ -7,6 +7,9 @@ use SackConfig;
 
 $global_config='sack.conf';
 
+# --reload: after regenerating configs, reload BIND (taking dynamic-zone precautions)
+my $do_reload = grep { $_ eq '--reload' } @ARGV;
+
 %global=SackConfig::readConf($global_config);
 
 for $module (keys %{$global{defaultmodules}})
@@ -54,6 +57,16 @@ for $module (keys %{$global{defaultmodules}})
   else
   {
     SackUtils::warn("config dump function $function not defined");
+  }
+}
+
+if ($do_reload)
+{
+  for $module (keys %{$global{defaultmodules}})
+  {
+    my $mod=$global{module}{$module};
+    my $function=$mod.'::reloadZones';
+    &{$function}() if (defined (&{$function}));
   }
 }
 
